@@ -1,0 +1,8 @@
+groq
+httpx
+openai
+Pygments
+python-dotenv
+PySide6
+pytest
+SQLAlchemy
