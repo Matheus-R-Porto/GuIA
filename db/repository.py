@@ -4,56 +4,28 @@ O app_controller e a UI não devem importar db.models/db.session diretamente;
 tudo passa por aqui, para que trocar de backend (SQLite -> Turso) ou reformar
 o schema não vaze para o resto do código.
 """
+import json
+
 from auth import hash_password, verify_password
-from db.models import User, Conversation, Message, SafetyBlock, Institution
+from db.models import User, Conversation, Message, SafetyBlock
 from db.session import get_session
 
-_TEST_INSTITUTION_CODE = "IFSUL2026"
-_TEST_INSTITUTION_NAME = "IFSul - Campus Sapiranga (código de teste)"
-
-
-def seed_test_institution():
-    """Cria a instituição de teste, se ainda não existir — permite testar o
-    fluxo de criação de perfil professor sem um processo real de emissão de
-    código (isso é trabalho futuro, fora de escopo por ora)."""
-    with get_session() as session:
-        exists = (
-            session.query(Institution)
-            .filter(Institution.code == _TEST_INSTITUTION_CODE)
-            .first()
-        )
-        if exists is None:
-            session.add(Institution(name=_TEST_INSTITUTION_NAME, code=_TEST_INSTITUTION_CODE))
-            session.commit()
-
-
-def get_institution_by_code(code: str) -> dict | None:
-    code = (code or "").strip()
-    if not code:
-        return None
-    with get_session() as session:
-        inst = session.query(Institution).filter(Institution.code == code).first()
-        if inst is None:
-            return None
-        return {"id": inst.id, "name": inst.name, "code": inst.code}
-
-
-def create_user(name: str, password: str, institution_code: str = "") -> dict:
-    """Cria um perfil local. Role NUNCA é auto-declarado: só vira "professor"
-    se institution_code bater com uma instituição cadastrada."""
-    institution = get_institution_by_code(institution_code)
-    role = "professor" if institution else "aluno"
+def create_user(name: str, password: str) -> dict:
+    """Cria um perfil local com acesso de aluno, sem privilégios por instituição."""
+    name = (name or "").strip()
+    if not name or not password:
+        raise ValueError("Nome e senha são obrigatórios para criar um perfil.")
     with get_session() as session:
         user = User(
             name=(name or "").strip(),
-            role=role,
+            role="aluno",
             password_hash=hash_password(password) if password else "",
-            institution_id=institution["id"] if institution else None,
+            institution_id=None,
         )
         session.add(user)
         session.commit()
         session.refresh(user)
-        return {"id": user.id, "name": user.name, "role": user.role}
+        return {"id": user.id, "name": user.name, "role": "aluno"}
 
 
 def list_users() -> list[dict]:
@@ -64,7 +36,7 @@ def list_users() -> list[dict]:
             {
                 "id": u.id,
                 "name": u.name,
-                "role": u.role,
+                "role": "aluno",
                 "has_password": bool(u.password_hash),
             }
             for u in rows
@@ -79,7 +51,7 @@ def get_user(user_id: int) -> dict | None:
         return {
             "id": user.id,
             "name": user.name,
-            "role": user.role,
+            "role": "aluno",
             "education_level": user.education_level,
         }
 
@@ -180,3 +152,27 @@ def delete_conversation(conversation_id: int):
         if conv is not None:
             session.delete(conv)
             session.commit()
+
+
+def create_quiz_conversation(user_id: int, title: str, context: dict, intro: str) -> int:
+    """Persist the question snapshot and welcome message in one transaction."""
+    with get_session() as session:
+        conv = Conversation(user_id=user_id, title=title[:200],
+                            quiz_context=json.dumps(context, ensure_ascii=False))
+        session.add(conv)
+        session.flush()
+        session.add(Message(conversation_id=conv.id, role="assistant", content=intro, order_index=0))
+        session.commit()
+        return conv.id
+
+
+def get_quiz_context(conversation_id: int) -> dict | None:
+    with get_session() as session:
+        conv = session.get(Conversation, conversation_id)
+        if conv is None or not conv.quiz_context:
+            return None
+        try:
+            context = json.loads(conv.quiz_context)
+        except (ValueError, TypeError):
+            return None
+        return context if isinstance(context, dict) else None

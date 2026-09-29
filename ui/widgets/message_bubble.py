@@ -1,7 +1,7 @@
 import re
 
-from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QFont, QFontMetrics
+from PySide6.QtCore import QTimer, Qt, QUrl
+from PySide6.QtGui import QFont, QFontMetrics, QDesktopServices
 from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QSizePolicy
 
 import code_highlighter
@@ -202,7 +202,11 @@ class MessageBubble(QFrame):
         self.updateGeometry()
 
     def _on_link_activated(self, href: str):
-        # Único link que a bolha de mensagem tem hoje é o "Copiar" de cada
+        url = QUrl(href)
+        if url.scheme() in ("https", "http") and url.host():
+            QDesktopServices.openUrl(url)
+            return
+        # Os links internos de "Copiar" pertencem a cada
         # bloco de código (ver code_highlighter.py) — href no formato
         # "guia-copy:{índice}", apontando pro código puro correspondente.
         if not href.startswith("guia-copy:"):

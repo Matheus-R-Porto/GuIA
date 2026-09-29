@@ -19,13 +19,7 @@ class Base(DeclarativeBase):
 
 
 class Institution(Base):
-    """Instituição com código de acesso ao modo professor.
-
-    Uma única linha por escola — o código é compartilhado por todos os
-    professores dela (não é emitido por professor individual). Sem geração/
-    revogação dinâmica ainda: por ora, semeado manualmente (ver
-    db.seed_test_institution) para permitir testar o fluxo.
-    """
+    """Tabela legada, mantida apenas para compatibilidade de bancos existentes."""
     __tablename__ = "institutions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -35,18 +29,12 @@ class Institution(Base):
 
 
 class User(Base):
-    """Perfil local do usuário (login por perfil, não por conta de rede).
-
-    Senha é opcional apenas para perfis legados (criados antes deste campo
-    existir, password_hash=""); todo perfil novo exige senha. O papel
-    (aluno/professor) NUNCA é auto-declarado: só vira "professor" se o
-    código de instituição informado na criação for válido.
-    """
+    """Perfil local com senha e histórico próprios; todos têm acesso de aluno."""
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(80), default="")
-    role: Mapped[str] = mapped_column(String(20), default="aluno")  # "aluno" | "professor"
+    role: Mapped[str] = mapped_column(String(20), default="aluno")  # Campo legado; sempre "aluno"
     education_level: Mapped[str] = mapped_column(String(20), default="")
     password_hash: Mapped[str] = mapped_column(String(200), default="")
     institution_id: Mapped[int | None] = mapped_column(
@@ -65,6 +53,7 @@ class Conversation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     title: Mapped[str] = mapped_column(String(200), default="Nova conversa")
+    quiz_context: Mapped[str] = mapped_column(Text, default="")
     provider_used: Mapped[str] = mapped_column(String(80), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(

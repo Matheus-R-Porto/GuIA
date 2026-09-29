@@ -12,7 +12,7 @@ import theme
 import user_config
 from config import HARD_MAX_INPUT_CHARS, MAX_USER_CHARS
 from i18n import t
-from ui.widgets import ChatInputPanel, MessageBubble, SidebarWidget, QuizWidget, LibraryWidget
+from ui.widgets import ChatInputPanel, MessageBubble, SidebarWidget, QuizWidget
 from ui.workers import AIWorker, TitleWorker
 
 _DEFAULT_WELCOME_TEXT = t("welcome_default")
@@ -33,7 +33,6 @@ class GuiAWindow(QWidget):
         self.syncing_internal_scroll = False
         self._pending_first_message = None
         self._quiz_open = False
-        self._library_open = False
 
         self.max_send_chars = MAX_USER_CHARS
         self.max_input_chars = HARD_MAX_INPUT_CHARS
@@ -52,13 +51,12 @@ class GuiAWindow(QWidget):
             accent=user_config.get("accent_color", "#1565C0"),
         )
         self.setStyleSheet(sheet)
-        # A Biblioteca fica muitas camadas abaixo (QScrollArea + QStackedWidget
+        # O Laboratório fica muitas camadas abaixo (QScrollArea + QStackedWidget
         # + botões criados em tempo de execução) — a herança automática do
         # stylesheet da janela não estava chegando de forma confiável nela
         # (mesmo bug que fazia os diálogos precisarem de setStyleSheet
         # explícito). Aplicar direto nela também resolve.
         self.quiz_widget.setStyleSheet(sheet)
-        self.library_widget.setStyleSheet(sheet)
 
     def apply_theme(self):
         """Re-aplica o tema atual (chamado ao salvar nas configurações)."""
@@ -78,7 +76,6 @@ class GuiAWindow(QWidget):
         self.sidebar.sidebarWidthChanged.connect(self.on_sidebar_width_changed)
         self.sidebar.settingsRequested.connect(self.open_settings)
         self.sidebar.quizRequested.connect(self.open_quiz)
-        self.sidebar.libraryRequested.connect(self.open_library)
         self.sidebar.conversationSelected.connect(self.handle_load_conversation)
         self.sidebar.conversationRenameRequested.connect(self.handle_rename_conversation)
         self.sidebar.conversationDeleteRequested.connect(self.handle_delete_conversation)
@@ -177,13 +174,9 @@ class GuiAWindow(QWidget):
         self.content_layout.addWidget(self.bottom_spacer, 1)
 
         self.quiz_widget = QuizWidget()
+        self.quiz_widget.chatAboutQuestionRequested.connect(self.handle_start_quiz_chat)
         self.content_layout.addWidget(self.quiz_widget, 1)
         self.quiz_widget.hide()
-
-        self.library_widget = LibraryWidget()
-        self.library_widget.startChatAboutArticleRequested.connect(self.handle_start_library_chat)
-        self.content_layout.addWidget(self.library_widget, 1)
-        self.library_widget.hide()
 
         self.input_overlay = QWidget(self.content_area)
         self.input_overlay.setAttribute(Qt.WA_StyledBackground, True)
@@ -196,6 +189,7 @@ class GuiAWindow(QWidget):
             max_send_chars=self.max_send_chars,
             max_input_chars=self.max_input_chars,
         )
+        self.input_panel.sourcesRequested.connect(self.handle_request_sources)
         self.input_panel.sendRequested.connect(self.handle_send)
         self.input_panel.heightChanged.connect(self.on_input_panel_height_changed)
 
@@ -394,6 +388,7 @@ class GuiAWindow(QWidget):
         self.is_waiting_response = busy
         self.input_panel.set_busy(busy)
         self.sidebar.set_busy(busy)
+        self.input_panel.set_sources_available(self.controller.can_request_sources())
 
     # --- handlers ---
 
@@ -410,8 +405,6 @@ class GuiAWindow(QWidget):
     def open_quiz(self):
         if self.is_waiting_response or self._quiz_open:
             return
-        if self._library_open:
-            self.close_library()
         self._quiz_open = True
         self._hide_chat_area()
         self.quiz_widget.show()
@@ -422,29 +415,21 @@ class GuiAWindow(QWidget):
         self.quiz_widget.updateGeometry()
         QTimer.singleShot(0, self.quiz_widget.updateGeometry)
 
+    def handle_start_quiz_chat(self, question: dict, selected: str):
+        if self.is_waiting_response:
+            return
+        conversation_id = self.controller.start_quiz_chat(question, selected)
+        self._reset_chat_ui()
+        self._pending_first_message = None
+        self.handle_load_conversation(conversation_id, force=True)
+        self.refresh_conversation_list()
+        self.input_panel.input_field.setFocus()
+
     def close_quiz(self):
         if not self._quiz_open:
             return
         self._quiz_open = False
         self.quiz_widget.hide()
-        self._show_chat_area()
-
-    def open_library(self):
-        if self.is_waiting_response or self._library_open:
-            return
-        if self._quiz_open:
-            self.close_quiz()
-        self._library_open = True
-        self._hide_chat_area()
-        self.library_widget.show()
-        self.library_widget.updateGeometry()
-        QTimer.singleShot(0, self.library_widget.updateGeometry)
-
-    def close_library(self):
-        if not self._library_open:
-            return
-        self._library_open = False
-        self.library_widget.hide()
         self._show_chat_area()
 
     def _hide_chat_area(self):
@@ -466,25 +451,6 @@ class GuiAWindow(QWidget):
         self.update_chat_bottom_spacing()
         self.update_chat_scroll_ui()
 
-    def handle_start_library_chat(self, article: dict):
-        if self.is_waiting_response:
-            return
-        # _reset_chat_ui() PRECISA rodar antes de close_library(): close_library
-        # chama _show_chat_area(), que decide o que mostrar (tela de boas-vindas
-        # vs. chat_area com as bolhas antigas) olhando pro first_message_sent
-        # AINDA da conversa anterior. Se isso rodar antes do reset, o
-        # QScrollArea do chat chega a reaparecer com o scroll (posição/altura)
-        # da conversa antiga — e some ANTES do reset limpar as bolhas — e essa
-        # posição de rolagem obsoleta gruda: a mensagem nova é inserida
-        # corretamente na lista, só que fora da área visível do scroll, e some
-        # até fechar/reabrir o app. Resetar primeiro garante que
-        # _show_chat_area() já veja first_message_sent=False e a lista de
-        # mensagens vazia.
-        self._reset_chat_ui()
-        self.close_library()
-        self.controller.start_library_chat(article)
-        self.welcome_label.setText(t("welcome_article_template", title=article["title"]))
-
     def handle_switch_profile(self):
         from ui.dialogs import LoginDialog
         login = LoginDialog(self.controller, self)
@@ -496,15 +462,10 @@ class GuiAWindow(QWidget):
     def handle_new_chat(self):
         if self.is_waiting_response:
             return
-        # Mesmo motivo do reorder em handle_start_library_chat: resetar antes
-        # de fechar Laboratório/Biblioteca evita que _show_chat_area() (chamado
-        # por close_quiz()/close_library()) reaja ao first_message_sent/lista
-        # de mensagens ainda da conversa anterior.
+        # Reseta antes de fechar o Laboratório para restaurar a tela correta.
         self._reset_chat_ui()
         if self._quiz_open:
             self.close_quiz()
-        if self._library_open:
-            self.close_library()
         self.controller.new_chat()
         self.welcome_label.setText(_DEFAULT_WELCOME_TEXT)
 
@@ -524,8 +485,12 @@ class GuiAWindow(QWidget):
         self.update_overlay_positions()
         self.update_chat_bottom_spacing()
         self.sidebar.set_active_conversation(None)
+        self.input_panel.set_sources_available(False)
 
     def closeEvent(self, event):
+        if any(w is not None and w.isRunning() for w in (self.worker, self.title_worker)):
+            event.ignore()
+            return
         self.controller.close()
         super().closeEvent(event)
 
@@ -538,18 +503,17 @@ class GuiAWindow(QWidget):
         )
         self.sidebar.set_active_conversation(self.controller.current_conversation_id)
 
-    def handle_load_conversation(self, conversation_id: int):
+    def handle_load_conversation(self, conversation_id: int, force: bool = False):
         if self.is_waiting_response:
             return
-        if (self.controller.current_conversation_id == conversation_id
-                and not self._quiz_open and not self._library_open):
+        if (not force and self.controller.current_conversation_id == conversation_id
+                and not self._quiz_open):
             return
         if self._quiz_open:
             self.close_quiz()
-        if self._library_open:
-            self.close_library()
 
         messages = self.controller.load_conversation(conversation_id)
+        self.input_panel.set_sources_available(self.controller.can_request_sources())
 
         while self.messages_layout.count() > 1:
             item = self.messages_layout.takeAt(0)
@@ -601,6 +565,23 @@ class GuiAWindow(QWidget):
         self.controller.rename_conversation(conversation_id, title)
         self.refresh_conversation_list()
         self.title_worker = None
+
+    def handle_request_sources(self):
+        if self.is_waiting_response or not self.controller.can_request_sources():
+            return
+        self.add_message(t("sources_request"), is_user=True)
+        self.loading_bubble = MessageBubble(
+            t("sources_loading"), self.get_max_bubble_width(),
+            is_user=False, is_loading=True,
+            font_size=user_config.chat_font_size(),
+        )
+        self.messages_layout.insertWidget(self.messages_layout.count() - 1, self.loading_bubble)
+        self.scroll_to_bottom()
+        self.set_busy_state(True)
+        self.worker = AIWorker(self.controller, t("sources_request"), request_sources=True)
+        self.worker.finished.connect(self.on_ai_response)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.start()
 
     def handle_send(self):
         if self.is_waiting_response:

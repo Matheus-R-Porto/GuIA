@@ -12,7 +12,7 @@ class LoginDialog(QDialog):
     """Seleciona ou cria um perfil local antes de abrir o GuIA.
 
     Três telas internas (QStackedWidget): seletor de perfis, criação de
-    perfil (com código de instituição opcional) e confirmação de senha.
+    perfil (nome e senha) e confirmação de senha.
     Perfis locais, não contas de rede — cada pessoa que usa o mesmo PC tem
     seu próprio histórico de conversas.
     """
@@ -89,9 +89,8 @@ class LoginDialog(QDialog):
 
     def _refresh_picker(self):
         self.profile_list.clear()
-        role_labels = {"aluno": t("role_aluno"), "professor": t("role_professor")}
         for profile in self.controller.list_profiles():
-            label = f"{profile['name']}  ({role_labels.get(profile['role'], profile['role'])})"
+            label = profile["name"]
             item = QListWidgetItem(label)
             item.setData(Qt.UserRole, profile["id"])
             item.setData(Qt.UserRole + 1, profile["has_password"])
@@ -143,17 +142,6 @@ class LoginDialog(QDialog):
         self.create_password_confirm_edit.setMinimumHeight(34)
         layout.addWidget(self.create_password_confirm_edit)
 
-        code_label = QLabel(t("login_institution_code_label"))
-        code_label.setFont(QFont("Open Sans", 10))
-        code_label.setWordWrap(True)
-        layout.addWidget(code_label)
-
-        self.create_code_edit = QLineEdit()
-        self.create_code_edit.setFont(QFont("Open Sans", 11))
-        self.create_code_edit.setPlaceholderText(t("login_institution_code_placeholder"))
-        self.create_code_edit.setMinimumHeight(34)
-        layout.addWidget(self.create_code_edit)
-
         self.create_error_label = QLabel("")
         self.create_error_label.setObjectName("CharCounterLabel")
         self.create_error_label.setProperty("exceeded", True)
@@ -188,7 +176,6 @@ class LoginDialog(QDialog):
         self.create_name_edit.clear()
         self.create_password_edit.clear()
         self.create_password_confirm_edit.clear()
-        self.create_code_edit.clear()
         self.create_error_label.hide()
         self.create_back_btn.setVisible(allow_back)
         self.stack.setCurrentIndex(1)
@@ -198,7 +185,6 @@ class LoginDialog(QDialog):
         name = self.create_name_edit.text().strip()
         password = self.create_password_edit.text()
         confirm = self.create_password_confirm_edit.text()
-        code = self.create_code_edit.text().strip()
 
         if not name:
             self._show_create_error(t("login_error_no_name"))
@@ -210,7 +196,7 @@ class LoginDialog(QDialog):
             self._show_create_error(t("login_error_password_mismatch"))
             return
 
-        profile = self.controller.create_profile(name, password, code)
+        profile = self.controller.create_profile(name, password)
         self.controller.set_active_user(profile["id"])
         self.accept()
 
@@ -272,7 +258,7 @@ class LoginDialog(QDialog):
     def _show_password_page(self, user_id: int):
         self._pending_user_id = user_id
         item = self.profile_list.currentItem()
-        name = item.text().split("  (")[0] if item else ""
+        name = item.text() if item else ""
         self.password_prompt_label.setText(t("login_password_of_template", name=name))
         self.password_edit.clear()
         self.password_error_label.hide()

@@ -180,8 +180,6 @@ _GROUPS = (
 def _find_block(text: str, mode: str) -> tuple[str | None, str | None]:
     t = _normalize(text)        #anti-ofuscação
     for patterns, response in _GROUPS:
-        if mode == "professor" and patterns is _OTHER_PATTERNS:
-            continue
         for p in patterns:
             if re.search(p, t):
                 return response, p  # bloqueia com resposta adequada + padrão que disparou
@@ -189,12 +187,7 @@ def _find_block(text: str, mode: str) -> tuple[str | None, str | None]:
 
 
 def check_safety(text: str, mode: str = "aluno") -> str | None:
-    """mode="professor" pula só o grupo de má-fé educacional (_OTHER_PATTERNS
-    — "gabarito", "resolva tudo", jailbreak): esses padrões existem para
-    proteger o ALUNO de colar, e bloqueariam pedidos legítimos de um
-    professor (ex: "monta um gabarito completo dessa prova"). Os grupos de
-    dano real (automutilação, violência/drogas/crimes, conteúdo adulto)
-    continuam ativos para qualquer um, independente do modo."""
+    """Aplica as mesmas restrições a todos os perfis, inclusive legados."""
     response, _ = _find_block(text, mode)
     return response
 

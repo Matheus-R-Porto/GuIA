@@ -12,6 +12,7 @@ from .enter_text_edit import EnterTextEdit
 
 
 class ChatInputPanel(QFrame):
+    sourcesRequested = Signal()
     sendRequested = Signal()
     heightChanged = Signal()
 
@@ -21,6 +22,7 @@ class ChatInputPanel(QFrame):
         self.max_send_chars = max_send_chars
         self.max_input_chars = max_input_chars
         self.is_waiting_response = False
+        self.sources_available = False
         self.syncing_external_scroll = False
         self.syncing_internal_scroll = False
 
@@ -71,6 +73,13 @@ class ChatInputPanel(QFrame):
         self.char_counter.setObjectName("CharCounterLabel")
         self.char_counter.hide()
 
+        self.sources_btn = QPushButton(t("sources_button"))
+        self.sources_btn.setObjectName("SourcesButton")
+        self.sources_btn.setToolTip(t("sources_tooltip"))
+        self.sources_btn.setCursor(Qt.PointingHandCursor)
+        self.sources_btn.setEnabled(False)
+        self.sources_btn.clicked.connect(self.sourcesRequested.emit)
+        self.footer_area_layout.addWidget(self.sources_btn)
         self.footer_area_layout.addStretch(1)
         self.footer_area_layout.addWidget(self.char_counter, 0, Qt.AlignVCenter)
 
@@ -157,7 +166,12 @@ class ChatInputPanel(QFrame):
     def set_busy(self, busy: bool):
         self.is_waiting_response = busy
         self.input_field.setReadOnly(busy)
+        self.sources_btn.setEnabled(self.sources_available and not busy)
         self.update_send_button_state()
+
+    def set_sources_available(self, available: bool):
+        self.sources_available = available
+        self.sources_btn.setEnabled(available and not self.is_waiting_response)
 
     def get_text(self) -> str:
         return self.input_field.toPlainText()

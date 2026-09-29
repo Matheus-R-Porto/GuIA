@@ -1,4 +1,5 @@
 import sys
+from quiz_chat import make_context, context_prompt, introduction
 
 from engine import TutorEngine, quick_title
 from chat_exporter import export_chat
@@ -9,6 +10,8 @@ from config import OPENAI_API_KEY, GROQ_API_KEY, GROQ_MODEL, OPENAI_MODEL
 import user_config
 import db
 from lang_detect import detect_language
+from sources import latest_exchange, find_sources
+from i18n import t
 
 
 def _api_signature() -> tuple:
@@ -35,18 +38,18 @@ class AppController:
         self.current_mode = "aluno"
         self.current_conversation_id = None
         self.current_article = None
+        self.current_quiz = None
         self.reload_settings()
 
         db.init_db()
-        db.seed_test_institution()
 
     # --- perfis / login ---
 
     def list_profiles(self) -> list[dict]:
         return db.list_users()
 
-    def create_profile(self, name: str, password: str, institution_code: str = "") -> dict:
-        return db.create_user(name, password, institution_code)
+    def create_profile(self, name: str, password: str) -> dict:
+        return db.create_user(name, password)
 
     def check_password(self, user_id: int, password: str) -> bool:
         return db.check_user_password(user_id, password)
@@ -58,22 +61,17 @@ class AppController:
         if user is None:
             raise ValueError(f"Perfil {user_id} não encontrado.")
         self.user_id = user["id"]
-        self.user_role = user["role"]
+        self.user_role = "aluno"
         self.current_conversation_id = None
         self.current_article = None
+        self.current_quiz = None
         self._engine.clear_history()
-        # Sempre volta pro modo aluno numa sessão nova, mesmo pra quem é
-        # professor — evita continuar sem querer no modo direto (sem o
-        # guard socrático) por ter esquecido ligado da vez anterior.
+        # Cada perfil começa no tutor padrão, com as mesmas restrições.
         self.set_mode("aluno")
 
     def set_mode(self, mode: str):
-        """Troca entre "aluno" (padrão, socrático) e "professor" (assistente
-        direto). "professor" só é aceito se o perfil ativo tiver essa role —
-        o modo nunca é o que destrava o papel, é o oposto: o papel (validado
-        por código de instituição) é que autoriza o modo."""
-        if mode == "professor" and self.user_role != "professor":
-            mode = "aluno"
+        """Todos os perfis usam o tutor aluno; revisão depende da questão ativa."""
+        mode = "quiz" if self.current_quiz is not None else "aluno"
         self.current_mode = mode
         self._engine.set_mode(mode)
         self._engine.set_personalization(self._compose_personalization())
@@ -129,6 +127,8 @@ class AppController:
         tutor (nome, nível de ensino, futuramente idioma) são reunidos.
         """
         parts = []
+        if self.current_quiz is not None:
+            parts.append(context_prompt(self.current_quiz))
 
         name = user_config.get("user_name", "").strip()
         if name:
@@ -155,26 +155,29 @@ class AppController:
                 "resposta — não pergunte qual artigo é, você já sabe."
             )
 
-        # O nível de ensino calibra a FORMA da dica socrática — não faz
-        # sentido no modo professor, que já responde de forma direta.
-        if self.current_mode != "professor":
-            level_names = {"fundamental": "fundamental", "medio": "médio", "superior": "superior"}
-            level = user_config.get("education_level", "")
-            if level in level_names:
-                parts.append(
-                    f"O aluno está no ensino {level_names[level]}. Ajuste o vocabulário e a "
-                    f"profundidade das explicações e dicas a esse nível — mais simples e concreto "
-                    f"nos níveis iniciais, mais aprofundado nos avançados. Isso muda APENAS a "
-                    f"forma da dica; nunca entregue a resposta pronta, seja qual for o nível."
-                )
-            else:
-                # Modo automático: sem nível informado, o GuIA infere pela conversa.
-                parts.append(
-                    "Nenhum nível de ensino foi informado: deduza o nível do aluno pela forma "
-                    "como ele escreve e pergunta, e ajuste o vocabulário e a profundidade "
-                    "dinamicamente ao longo da conversa. Isso muda APENAS a forma da explicação "
-                    "e das dicas; nunca entregue a resposta pronta, seja qual for o nível."
-                )
+        # Nível de ensino ajusta a explicação para qualquer perfil.
+        level_names = {"fundamental": "fundamental", "medio": "médio", "superior": "superior"}
+        level = user_config.get("education_level", "")
+        if level in level_names:
+            parts.append(
+                f"O aluno está no ensino {level_names[level]}. Ajuste o vocabulário e a "
+                f"profundidade das explicações e dicas a esse nível — mais simples e concreto "
+                f"nos níveis iniciais, mais aprofundado nos avançados. Isso muda APENAS a "
+                f"forma da dica; nunca entregue a resposta pronta, seja qual for o nível."
+            )
+        else:
+            # Modo automático: sem nível informado, o GuIA infere pela conversa.
+            parts.append(
+                "Nenhum nível de ensino foi informado: deduza o nível do aluno pela forma "
+                "como ele escreve e pergunta, e ajuste o vocabulário e a profundidade "
+                "dinamicamente ao longo da conversa. Isso muda APENAS a forma da explicação "
+                "e das dicas; nunca entregue a resposta pronta, seja qual for o nível."
+            )
+
+        if self.current_quiz is not None:
+            parts = [part.replace("nunca entregue a resposta pronta, seja qual for o nível.",
+                                  "explique o raciocínio da questão já respondida, conforme a dúvida do aluno.")
+                     for part in parts]
 
         lang_names = {"pt": "português", "en": "inglês", "es": "espanhol"}
         lang = user_config.get("response_language", "auto")
@@ -233,6 +236,24 @@ class AppController:
 
         return response
 
+    def can_request_sources(self) -> bool:
+        return latest_exchange(self._engine.get_history()) is not None
+
+    def request_sources(self) -> str:
+        exchange = latest_exchange(self._engine.get_history())
+        if exchange is None or self.current_conversation_id is None:
+            return t("sources_no_answer")
+        question, answer = exchange
+        response = find_sources(question, answer, self._engine.source_query)
+        request = t("sources_request")
+        db.add_message(self.current_conversation_id, "user", request)
+        db.add_message(self.current_conversation_id, "assistant", response)
+        history = self._engine.get_history()
+        history.extend([{"role": "user", "content": request},
+                        {"role": "assistant", "content": response}])
+        self._engine.load_history(history)
+        return response
+
     def generate_title(self, first_message: str) -> str:
         """Gera (via modelo) um título melhor para a conversa atual."""
         return self._engine.generate_title(first_message)
@@ -243,6 +264,9 @@ class AppController:
     def delete_conversation(self, conversation_id: int):
         db.delete_conversation(conversation_id)
         if self.current_conversation_id == conversation_id:
+            self.current_quiz = None
+            if self.current_mode == "quiz":
+                self.set_mode("aluno")
             self.current_conversation_id = None
             self._engine.clear_history()
 
@@ -252,6 +276,10 @@ class AppController:
     def load_conversation(self, conversation_id: int) -> list[dict]:
         """Carrega uma conversa salva: repassa o histórico para o engine (para
         que a continuação tenha contexto) e retorna as mensagens para a UI."""
+        self.current_quiz = db.get_quiz_context(conversation_id)
+        self.current_article = None
+        self.set_mode("quiz" if self.current_quiz is not None else
+                      ("aluno" if self.current_mode in ("quiz", "library") else self.current_mode))
         messages = db.get_conversation_messages(conversation_id)
         self._engine.load_history(messages)
         self.current_conversation_id = conversation_id
@@ -259,6 +287,9 @@ class AppController:
 
     def new_chat(self):
         self._auto_export()
+        self.current_quiz = None
+        if self.current_mode == "quiz":
+            self.set_mode("aluno")
         self._engine.clear_history()
         self.current_conversation_id = None
         # "Novo Chat" comum sai do modo library (que só faz sentido atrelado
@@ -268,6 +299,23 @@ class AppController:
             self.current_article = None
             self.set_mode("aluno")
 
+    def start_quiz_chat(self, question: dict, selected: str) -> int:
+        context = make_context(question, selected)
+        intro = introduction(context)
+        self._auto_export()
+        conversation_id = db.create_quiz_conversation(
+            self.user_id,
+            t("quiz_chat_title", subject=question.get("materia", ""), id=question.get("id", "")),
+            context, intro,
+        )
+        self._engine.clear_history()
+        self.current_article = None
+        self.current_quiz = context
+        self.current_conversation_id = conversation_id
+        self.set_mode("quiz")
+        self._engine.load_history([{"role": "assistant", "content": intro}])
+        return conversation_id
+
     def start_library_chat(self, article: dict):
         """Inicia uma conversa nova já no modo Biblioteca, com o contexto
         do artigo (título, autores, resumo) injetado na personalização —
@@ -276,6 +324,7 @@ class AppController:
         self._auto_export()
         self._engine.clear_history()
         self.current_conversation_id = None
+        self.current_quiz = None
         self.current_article = article
         self.set_mode("library")
 
