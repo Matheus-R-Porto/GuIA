@@ -13,6 +13,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from db.models import Base
 
 _PENDING_COLUMNS = {
+    "conversations": {"quiz_context": "TEXT DEFAULT ''"},
     "users": {
         "password_hash": "VARCHAR(200) DEFAULT ''",
         "institution_id": "INTEGER",
@@ -58,6 +59,10 @@ def init_db():
     engine = _ensure_engine()
     Base.metadata.create_all(engine)
     _migrate_missing_columns(engine)
+    # Compatibilidade com perfis antigos: mantém ids, senhas e conversas.
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE users SET role = 'aluno', institution_id = NULL "
+                          "WHERE role IS NULL OR role != 'aluno' OR institution_id IS NOT NULL"))
 
 
 def get_session() -> Session:

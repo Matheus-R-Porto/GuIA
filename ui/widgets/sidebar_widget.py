@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QMenu, QPushButton, QSizePolicy, QVBoxLayout, QWidget,
 )
 
-from config import ENABLE_EXPLORE, ENABLE_LIBRARY, ENABLE_QUIZ
+from config import ENABLE_EXPLORE, ENABLE_QUIZ
 from i18n import t
 
 _CONVERSATION_ID_ROLE = Qt.UserRole
@@ -18,7 +18,6 @@ class SidebarWidget(QFrame):
     sidebarWidthChanged = Signal(int)
     settingsRequested = Signal()
     quizRequested = Signal()
-    libraryRequested = Signal()
 
     conversationSelected = Signal(int)
     conversationRenameRequested = Signal(int, str)  # id, novo_titulo
@@ -74,18 +73,11 @@ class SidebarWidget(QFrame):
 
         menu_items = [(t("sidebar_new_chat"), "✚", "new_chat")]
 
-        # "Biblioteca" combina mais com buscar artigos/referências,
-        # "Laboratório" combina mais com o banco de questões (praticar/
-        # experimentar) — nomes exibidos e nomes internos (ação, sinal,
-        # pacote de dados) agora batem: "quiz" = banco de questões
-        # ("Laboratório" na tela), "library" = busca de artigos
-        # ("Biblioteca" na tela).
+        # O Laboratório mantém o banco de questões. Fontes ficam no chat.
         if ENABLE_QUIZ:
-            menu_items.append((t("sidebar_menu_laboratorio"), "⚗", "quiz"))
+            menu_items.append((t("sidebar_menu_simulado"), "⚗", "quiz"))
         if ENABLE_EXPLORE:
             menu_items.append((t("sidebar_menu_explorar"), "⌕", None))
-        if ENABLE_LIBRARY:
-            menu_items.append((t("sidebar_menu_biblioteca"), "⌘", "library"))
 
         for text, icon, action in menu_items:
             btn = QPushButton(f" {icon}  {text}")
@@ -102,9 +94,6 @@ class SidebarWidget(QFrame):
             elif action == "quiz":
                 self.quiz_btn = btn
                 btn.clicked.connect(self.quizRequested.emit)
-            elif action == "library":
-                self.library_btn = btn
-                btn.clicked.connect(self.libraryRequested.emit)
 
             self.sidebar_layout.addWidget(btn)
             self.menu_buttons.append(btn)

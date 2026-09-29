@@ -1,3 +1,4 @@
+from copy import deepcopy
 import html
 import re
 
@@ -87,6 +88,8 @@ class QuizWidget(QWidget):
     + explicação), sem ser conduzido por perguntas.
     """
 
+    chatAboutQuestionRequested = Signal(dict, str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -94,6 +97,7 @@ class QuizWidget(QWidget):
         self._shown_ids: set[str] = set()
         self._current_question: dict | None = None
         self._alt_buttons: dict[str, QPushButton] = {}
+        self._selected_answer = None
         self._answered = False
         # Histórico de questões já mostradas na sessão atual de filtros —
         # permite voltar pra uma questão anterior (preservando se ela já
@@ -168,7 +172,7 @@ class QuizWidget(QWidget):
         # setAlignment() acima.
         header.addWidget(self.tag_label, 1)
 
-        title = QLabel(t("sidebar_menu_laboratorio"))
+        title = QLabel(t("sidebar_menu_simulado"))
         title.setObjectName("LibraryTitleLabel")
         title.setFont(QFont("Roboto", 20, QFont.Bold))
         header.addWidget(title, 0, Qt.AlignRight | Qt.AlignVCenter)
@@ -661,6 +665,13 @@ class QuizWidget(QWidget):
         self.explanation_label.hide()
         layout.addWidget(self.explanation_label)
 
+        self.discuss_btn = QPushButton(t("quiz_discuss_button"))
+        self.discuss_btn.setObjectName("DialogSecondaryButton")
+        self.discuss_btn.setCursor(Qt.PointingHandCursor)
+        self.discuss_btn.clicked.connect(self._on_discuss_clicked)
+        self.discuss_btn.hide()
+        layout.addWidget(self.discuss_btn, 0, Qt.AlignLeft)
+
         layout.addStretch(1)
         return page
 
@@ -699,6 +710,8 @@ class QuizWidget(QWidget):
         self.back_btn.setEnabled(self._history_pos > 0)
 
     def _render_question(self):
+        self._selected_answer = None
+        self.discuss_btn.hide()
         q = self._current_question
         self.tag_label.setText(f"{q['vestibular']} {q['ano']} — {q['materia']} — {q['conteudo']}: {q['detalhe']}")
         self.enunciado_label.setText(_render_rich(q["enunciado"]))
@@ -857,6 +870,16 @@ class QuizWidget(QWidget):
             texto = t("library_incorrect_feedback_template", correta=correta, explicacao=q["explicacao"])
         self.explanation_label.setText(_render_rich(texto))
         self.explanation_label.show()
+        self._selected_answer = letra
+        self.discuss_btn.show()
+
+    def _on_discuss_clicked(self):
+        if (not self._answered or self._current_question is None
+                or self._selected_answer is None or self.stack.currentIndex() != 1):
+            return
+        self.chatAboutQuestionRequested.emit(
+            deepcopy(self._current_question), self._selected_answer,
+        )
 
     def _on_next_clicked(self):
         # Só busca uma questão nova quando já se está na ponta mais

@@ -13,6 +13,38 @@ pro tamanho deste projeto; a tela de configurações avisa isso ao usuário).
 import user_config
 
 _STRINGS = {
+    'sources_query_failed': {'pt': 'Não consegui preparar a busca a partir da resposta da IA. Tente novamente; a informação ainda não foi verificada.', 'en': 'I could not prepare a search from the AI answer. Try again; the information remains unverified.', 'es': 'No pude preparar una búsqueda a partir de la respuesta de la IA. Inténtalo de nuevo; la información sigue sin verificar.'},
+    'sources_provider': {'pt': 'Base consultada: {provider}', 'en': 'Source database: {provider}', 'es': 'Base consultada: {provider}'},
+    'sources_status_rate_limited': {'pt': 'limite de consultas atingido', 'en': 'request limit reached', 'es': 'límite de consultas alcanzado'},
+    'sources_status_timeout': {'pt': 'demorou demais para responder', 'en': 'response timed out', 'es': 'tardó demasiado en responder'},
+    'sources_status_network_error': {'pt': 'falha de conexão', 'en': 'connection failure', 'es': 'fallo de conexión'},
+    'sources_status_http_error': {'pt': 'serviço recusou a consulta', 'en': 'service rejected the request', 'es': 'el servicio rechazó la consulta'},
+    'sources_status_invalid_response': {'pt': 'resposta do serviço inválida', 'en': 'invalid service response', 'es': 'respuesta del servicio no válida'},
+    'sources_status_empty': {'pt': 'nenhum artigo encontrado', 'en': 'no papers found', 'es': 'no se encontraron artículos'},
+    'quiz_discuss_button': {'pt': 'Conversar sobre esta questão', 'en': 'Discuss this question', 'es': 'Conversar sobre esta pregunta'},
+    'quiz_chat_title': {'pt': 'Simulado — {subject} — {id}', 'en': 'Practice — {subject} — {id}', 'es': 'Simulacro — {subject} — {id}'},
+    'quiz_chat_intro': {'pt': '**Vamos conversar sobre esta questão.**\n\n{context}\n\nQual parte você quer entender melhor ou aprofundar?', 'en': '**Let’s discuss this question.**\n\n{context}\n\nWhat would you like to understand better or explore further?', 'es': '**Conversemos sobre esta pregunta.**\n\n{context}\n\n¿Qué parte quieres entender mejor o profundizar?'},
+    'quiz_chat_subject': {'pt': 'Matéria', 'en': 'Subject', 'es': 'Materia'},
+    'quiz_chat_topic': {'pt': 'Conteúdo', 'en': 'Topic', 'es': 'Tema'},
+    'quiz_chat_question': {'pt': 'Enunciado', 'en': 'Question', 'es': 'Enunciado'},
+    'quiz_chat_selected': {'pt': 'Sua resposta', 'en': 'Your answer', 'es': 'Tu respuesta'},
+    'quiz_chat_key': {'pt': 'Gabarito do Simulado', 'en': 'Practice answer key', 'es': 'Respuesta del simulacro'},
+    'quiz_chat_correct': {'pt': 'Você acertou.', 'en': 'You answered correctly.', 'es': 'Acertaste.'},
+    'quiz_chat_incorrect': {'pt': 'Sua resposta foi diferente do gabarito.', 'en': 'Your answer differed from the answer key.', 'es': 'Tu respuesta fue diferente de la respuesta correcta.'},
+    'quiz_chat_explanation': {'pt': 'Explicação do Simulado', 'en': 'Practice explanation', 'es': 'Explicación del simulacro'},
+    'quiz_chat_image': {'pt': 'Esta questão contém imagens que a IA não recebe. Se sua dúvida depender delas, descreva a figura ou a alternativa no chat.', 'en': 'This question contains images that the AI does not receive. If your question depends on them, describe the figure or option in the chat.', 'es': 'Esta pregunta contiene imágenes que la IA no recibe. Si tu duda depende de ellas, describe la figura o la opción en el chat.'},
+    'quiz_chat_image_option': {'pt': 'Alternativa em imagem', 'en': 'Image option', 'es': 'Opción en imagen'},
+    'sources_button': {'pt': 'Pedir fontes', 'en': 'Request sources', 'es': 'Pedir fuentes'},
+    'sources_tooltip': {'pt': 'Buscar artigos relacionados à última resposta da IA.', 'en': 'Find papers related to the latest AI answer.', 'es': 'Buscar artículos relacionados con la última respuesta de la IA.'},
+    'sources_request': {'pt': 'Quero fontes para conferir sua última resposta.', 'en': 'I want sources to check your last answer.', 'es': 'Quiero fuentes para comprobar tu última respuesta.'},
+    'sources_loading': {'pt': 'Buscando fontes…', 'en': 'Searching for sources…', 'es': 'Buscando fuentes…'},
+    'sources_no_answer': {'pt': 'Receba uma resposta da IA antes de pedir fontes.', 'en': 'Get an AI answer before requesting sources.', 'es': 'Recibe una respuesta de la IA antes de pedir fuentes.'},
+    'sources_no_claim': {'pt': 'Não identifiquei uma afirmação factual para pesquisar nessa resposta. Peça uma explicação sobre o assunto e tente novamente.', 'en': 'I could not identify a factual claim to search for in that answer. Ask for an explanation of the topic and try again.', 'es': 'No identifiqué una afirmación factual para buscar en esa respuesta. Pide una explicación del tema e inténtalo de nuevo.'},
+    'sources_unavailable': {'pt': 'Não consegui consultar as fontes agora. Tente novamente em instantes; a resposta anterior continua sem verificação.', 'en': 'I could not look up sources right now. Try again shortly; the previous answer remains unverified.', 'es': 'No pude consultar las fuentes ahora. Inténtalo de nuevo; la respuesta anterior sigue sin verificar.'},
+    'sources_not_found': {'pt': 'Não obtive artigos com links para essa resposta. Isso pode ocorrer por falta de resultados ou falha na busca. Não foi possível confirmar a informação.', 'en': 'I did not obtain papers with links for this answer. There may be no results or the search may have failed. The information could not be confirmed.', 'es': 'No obtuve artículos con enlaces para esta respuesta. Puede que no haya resultados o que la búsqueda haya fallado. No se pudo confirmar la información.'},
+    'sources_heading': {'pt': '**Fontes para conferir a resposta**', 'en': '**Sources to check the answer**', 'es': '**Fuentes para comprobar la respuesta**'},
+    'sources_caveat': {'pt': 'Estes artigos foram encontrados em uma base bibliográfica após sua solicitação; não são necessariamente as fontes usadas pela IA. São referências relacionadas ao tema, não uma confirmação da resposta. Abra os links e confira se os estudos realmente sustentam a afirmação.', 'en': 'These papers were found in a bibliographic database after your request; they are not necessarily the sources used by the AI. They are related references, not confirmation of the answer. Open the links and check whether the studies actually support the claim.', 'es': 'Estos artículos se encontraron en una base bibliográfica después de tu solicitud; no son necesariamente las fuentes usadas por la IA. Son referencias relacionadas, no una confirmación de la respuesta. Abre los enlaces y comprueba si los estudios respaldan la afirmación.'},
+    'sources_query': {'pt': 'Busca utilizada: {query}', 'en': 'Search query: {query}', 'es': 'Búsqueda utilizada: {query}'},
     # --- guia_window.py ---
     "app_window_title": {
         "pt": "GuIA - Tutor Socrático", "en": "GuIA - Socratic Tutor", "es": "GuIA - Tutor Socrático",
@@ -20,10 +52,6 @@ _STRINGS = {
     "welcome_default": {
         "pt": "Como GuIA pode te ajudar hoje?", "en": "How can GuIA help you today?",
         "es": "¿Cómo puede ayudarte GuIA hoy?",
-    },
-    "welcome_article_template": {
-        "pt": 'Vamos conversar sobre "{title}"?', "en": 'Shall we talk about "{title}"?',
-        "es": '¿Conversamos sobre "{title}"?',
     },
     "delete_conversation_title": {
         "pt": "Excluir conversa", "en": "Delete conversation", "es": "Eliminar conversación",
@@ -61,9 +89,7 @@ _STRINGS = {
         "pt": "Ex: Matheus (deixe em branco para nenhum)", "en": "E.g.: Matheus (leave blank for none)",
         "es": "Ej: Matheus (deja en blanco para ninguno)",
     },
-    "settings_mode_label": {"pt": "Modo", "en": "Mode", "es": "Modo"},
     "role_aluno": {"pt": "Aluno", "en": "Student", "es": "Estudiante"},
-    "role_professor": {"pt": "Professor", "en": "Teacher", "es": "Profesor"},
     "settings_level_label": {"pt": "Nível de ensino", "en": "Education level", "es": "Nivel educativo"},
     "option_auto": {"pt": "Automático", "en": "Automatic", "es": "Automático"},
     "level_fundamental": {"pt": "Fundamental", "en": "Elementary", "es": "Primaria"},
@@ -123,15 +149,6 @@ _STRINGS = {
     "login_confirm_password_placeholder": {
         "pt": "Confirmar senha", "en": "Confirm password", "es": "Confirmar contraseña",
     },
-    "login_institution_code_label": {
-        "pt": "Código de instituição (opcional — só para professores)",
-        "en": "Institution code (optional — teachers only)",
-        "es": "Código de institución (opcional — solo para profesores)",
-    },
-    "login_institution_code_placeholder": {
-        "pt": "Deixe em branco se você é aluno", "en": "Leave blank if you're a student",
-        "es": "Déjalo en blanco si eres estudiante",
-    },
     "back_btn": {"pt": "Voltar", "en": "Back", "es": "Volver"},
     "login_create_profile_confirm_btn": {"pt": "Criar perfil", "en": "Create profile", "es": "Crear perfil"},
     "login_error_no_name": {"pt": "Digite um nome.", "en": "Enter a name.", "es": "Escribe un nombre."},
@@ -148,9 +165,8 @@ _STRINGS = {
 
     # --- sidebar_widget.py ---
     "sidebar_new_chat": {"pt": "Novo Chat", "en": "New Chat", "es": "Nuevo Chat"},
-    "sidebar_menu_laboratorio": {"pt": "Laboratório", "en": "Laboratory", "es": "Laboratorio"},
+    "sidebar_menu_simulado": {"pt": "Simulado", "en": "Simulation", "es": "Simulado"},
     "sidebar_menu_explorar": {"pt": "Explorar", "en": "Explore", "es": "Explorar"},
-    "sidebar_menu_biblioteca": {"pt": "Biblioteca", "en": "Library", "es": "Biblioteca"},
     "context_rename": {"pt": "Renomear", "en": "Rename", "es": "Renombrar"},
     "context_move_to_project": {"pt": "Mover para projeto", "en": "Move to project", "es": "Mover a proyecto"},
     "context_delete": {"pt": "Excluir", "en": "Delete", "es": "Eliminar"},

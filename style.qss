@@ -582,3 +582,12 @@ QLabel#BotBubbleLabel {
     padding: 15px 18px;
     border: 1px solid #C3D4E6;
 }
+
+QPushButton#SourcesButton {
+    background: transparent;
+    color: #1565C0;
+    border: 1px solid #1565C0;
+    border-radius: 8px;
+    padding: 4px 10px;
+}
+QPushButton#SourcesButton:disabled { color: #888888; border-color: #888888; }

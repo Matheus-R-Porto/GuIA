@@ -1,5 +1,4 @@
-"""Library — busca de artigos científicos reais por palavra-chave, exibido
-na UI como "Biblioteca".
+"""Serviço de busca de artigos científicos usado pelo botão Pedir fontes.
 
 Usa a API pública do Semantic Scholar (gratuita, com chave própria — ver
 config.SEMANTIC_SCHOLAR_API_KEY). Sem RAG aqui — só busca + metadados

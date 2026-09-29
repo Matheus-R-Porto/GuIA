@@ -31,8 +31,6 @@ HARD_MAX_INPUT_CHARS = 2400
 # --- UI ---
 ENABLE_ATTACHMENTS = False
 ENABLE_EXPLORE = False
-# ENABLE_LIBRARY = busca de artigos (Semantic Scholar) — tela "Biblioteca"
-ENABLE_LIBRARY = True
 # ENABLE_QUIZ = banco de questões de vestibular — tela "Laboratório"
 ENABLE_QUIZ = True
 

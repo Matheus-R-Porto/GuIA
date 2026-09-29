@@ -65,21 +65,6 @@ class SettingsDialog(QDialog):
         left.addWidget(name_label)
         left.addWidget(self.name_edit)
 
-        # --- Modo (só aparece para quem é professor) ---
-        self.mode_combo = None
-        if self.controller.user_role == "professor":
-            mode_label = QLabel(t("settings_mode_label"))
-            mode_label.setFont(QFont("Open Sans", 11))
-            self.mode_combo = QComboBox()
-            self.mode_combo.setFont(QFont("Open Sans", 11))
-            self.mode_combo.addItems([t("role_aluno"), t("role_professor")])
-            self.mode_combo.setCurrentIndex(
-                1 if self.controller.current_mode == "professor" else 0
-            )
-            self.mode_combo.setMinimumHeight(34)
-            left.addWidget(mode_label)
-            left.addWidget(self.mode_combo)
-
         # --- Nível de ensino ---
         level_label = QLabel(t("settings_level_label"))
         level_label.setFont(QFont("Open Sans", 11))
@@ -289,9 +274,6 @@ class SettingsDialog(QDialog):
         self.reject()
 
     def _on_save(self):
-        if self.mode_combo is not None:
-            new_mode = "professor" if self.mode_combo.currentIndex() == 1 else "aluno"
-            self.controller.set_mode(new_mode)
         user_config.set("user_name", self.name_edit.text().strip())
         user_config.set("education_level", self._LEVELS[self.level_combo.currentIndex()])
         user_config.set("response_language", self._LANGS[self.lang_combo.currentIndex()])

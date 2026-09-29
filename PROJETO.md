@@ -2,6 +2,38 @@
 
 > Documento vivo: mantido atualizado conforme o projeto evolui. Última revisão: 2026-07-26.
 
+## Atualização — perfis com acesso único de aluno (2026-09-28)
+
+Login simplificado: nome, senha e confirmação na criação; seleção do perfil e senha na entrada. Foram removidos o campo de instituição, os rótulos de papel e a opção de modo professor nas configurações. Todos os perfis têm as mesmas restrições da IA. A revisão de questões do Simulado continua disponível para todos.
+
+Na inicialização, os perfis legados são normalizados para aluno e desvinculados de instituições, preservando ids, nomes, hashes de senha e conversas. As tabelas e colunas antigas permanecem apenas para compatibilidade com bancos existentes, sem conceder privilégios. O prompt de professor e a exceção do filtro de segurança foram removidos. Chamadas antigas ao modo professor caem no tutor aluno. As descrições anteriores do modo professor neste documento são históricas e não representam mais o funcionamento atual.
+
+Validação inclui migração repetida, preservação de senhas/histórico, isolamento entre perfis, criação sem código institucional e impossibilidade de reativar o acesso de professor.
+
+## Correção — busca de fontes indisponível (2026-09-27)
+
+Reproduzido HTTP 429 na consulta pública ao Semantic Scholar. O botão agora usa `library/references.py`: uma tentativa por base, com timeout de 10 segundos por requisição, recorrendo ao Crossref quando a primeira base falha ou não retorna referências utilizáveis. Não há espera para repetir consultas ao serviço limitado. Os links vêm exclusivamente dos metadados recebidos; a interface informa a base que respondeu e mantém o aviso de que referências relacionadas não confirmam a afirmação.
+
+Falhas na preparação da consulta pela IA têm mensagem própria. Quando as duas bases falham, o chat informa os motivos (limite, demora, rede, resposta inválida), sem registrar credenciais nem conteúdo de mensagens nos diagnósticos. O adaptador antigo permanece disponível para os consumidores legados.
+
+Validação: 268 testes passaram, 1 pulado e 1 teste de API excluído. Uma busca pública real por “C4 photosynthesis photorespiration”, sem credenciais ou chamadas ao modelo, reproduziu o limite no Semantic Scholar e obteve três referências do Crossref. Não foi executado o diagnóstico com as credenciais privadas do projeto.
+
+## Atualização — conversa sobre questões do Simulado (2026-09-27)
+
+Após marcar uma alternativa, correta ou incorreta, aparece **Conversar sobre esta questão** abaixo da explicação. O botão cria uma conversa independente, apresenta o enunciado, matéria, conteúdo, alternativas, escolha do aluno, gabarito e explicação, e aguarda a pergunta do aluno sem chamar a IA automaticamente. A questão continua disponível no Simulado, inclusive com a resposta marcada e o botão ao navegar para questões anteriores.
+
+O contexto é uma cópia da questão salva em `conversations.quiz_context`, com migração automática da coluna para bancos antigos. É restaurado ao reabrir a conversa e reaplicado ao prompt mesmo quando o histórico é limitado. Novo chat, troca de perfil e abertura de conversa comum removem o contexto anterior. O prompt de revisão permite explicar diretamente o raciocínio da questão já respondida, mantendo orientação socrática para exercícios novos. Figuras não são enviadas aos modelos; o chat avisa quando precisa de descrição visual.
+
+Implementação: `quiz_chat.py`, `app_controller.py`, `prompt.py`, `engine.py`, `db/`, `ui/widgets/quiz_widget.py` e `ui/windows/guia_window.py`. Testes em `tests/test_quiz_chat.py`: acerto/erro, navegação, abertura da janela, persistência/reabertura, isolamento entre conversas e migração sem perda dos registros existentes.
+
+## Atualização — fontes no chat (2026-09-27)
+
+A tela Biblioteca foi retirada. O botão **Pedir fontes**, junto ao campo de mensagem, busca artigos relacionados à última resposta da IA e salva os links no histórico. A consulta é extraída pelo modelo; títulos, autores e URLs vêm dos metadados das bases consultadas (Semantic Scholar, com alternativa no Crossref). Resultados são referências para conferência, não prova automática nem indicação de que o modelo consultou essas fontes antes de responder. Pedidos repetidos mantêm como alvo a resposta original, inclusive ao reabrir a conversa. O texto em digitação é preservado.
+
+A busca roda em segundo plano, apresenta falhas e ausência de resultados sem inventar referências, e abre apenas links HTTP/HTTPS no navegador. O pacote library/ permanece como serviço de busca para sources.py; os registros abaixo sobre a antiga tela Biblioteca são históricos.
+
+Arquivos centrais: sources.py, engine.py (source_query), app_controller.py (request_sources), ui/widgets/chat_input_widget.py e ui/windows/guia_window.py. Testes: tests/test_sources.py.
+
 ## 1. O que é o projeto
 
 **GuIA** é um tutor educacional com IA, em formato de aplicativo desktop (Windows), desenvolvido como Trabalho de Conclusão de Curso (TCC). A ideia central é diferenciar o GuIA de um chatbot de IA comum: em vez de responder perguntas diretamente, ele usa o **método socrático** — conduz o aluno com perguntas até que ele mesmo chegue à resposta, em vez de simplesmente entregá-la pronta.
