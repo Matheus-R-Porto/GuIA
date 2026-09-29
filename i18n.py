@@ -53,10 +53,6 @@ _STRINGS = {
         "pt": "Como GuIA pode te ajudar hoje?", "en": "How can GuIA help you today?",
         "es": "¿Cómo puede ayudarte GuIA hoy?",
     },
-    "welcome_article_template": {
-        "pt": 'Vamos conversar sobre "{title}"?', "en": 'Shall we talk about "{title}"?',
-        "es": '¿Conversamos sobre "{title}"?',
-    },
     "delete_conversation_title": {
         "pt": "Excluir conversa", "en": "Delete conversation", "es": "Eliminar conversación",
     },
@@ -171,7 +167,6 @@ _STRINGS = {
     "sidebar_new_chat": {"pt": "Novo Chat", "en": "New Chat", "es": "Nuevo Chat"},
     "sidebar_menu_simulado": {"pt": "Simulado", "en": "Simulation", "es": "Simulado"},
     "sidebar_menu_explorar": {"pt": "Explorar", "en": "Explore", "es": "Explorar"},
-    "sidebar_menu_biblioteca": {"pt": "Biblioteca", "en": "Library", "es": "Biblioteca"},
     "context_rename": {"pt": "Renomear", "en": "Rename", "es": "Renombrar"},
     "context_move_to_project": {"pt": "Mover para projeto", "en": "Move to project", "es": "Mover a proyecto"},
     "context_delete": {"pt": "Excluir", "en": "Delete", "es": "Eliminar"},

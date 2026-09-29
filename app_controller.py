@@ -37,7 +37,6 @@ class AppController:
         self.user_role = None
         self.current_mode = "aluno"
         self.current_conversation_id = None
-        self.current_article = None
         self.current_quiz = None
         self.reload_settings()
 
@@ -63,7 +62,6 @@ class AppController:
         self.user_id = user["id"]
         self.user_role = "aluno"
         self.current_conversation_id = None
-        self.current_article = None
         self.current_quiz = None
         self._engine.clear_history()
         # Cada perfil começa no tutor padrão, com as mesmas restrições.
@@ -137,22 +135,6 @@ class AppController:
                 f"conversa — sempre na saudação inicial e ao validar, elogiar ou encorajar "
                 f"(ex.: \"Boa, {name}!\"). Não precisa usar em toda frase, mas faça com que "
                 f"fique claro que você sabe o nome dele. Nunca invente outro nome."
-            )
-
-        if self.current_mode == "library" and self.current_article:
-            art = self.current_article
-            info = f"Título: {art.get('title', '')}\n"
-            if art.get("authors"):
-                info += f"Autores: {art['authors']}\n"
-            if art.get("year"):
-                info += f"Ano: {art['year']}\n"
-            if art.get("abstract"):
-                info += f"Resumo: {art['abstract']}\n"
-            parts.append(
-                "O aluno está discutindo o seguinte artigo científico, que ele "
-                "encontrou na busca da Biblioteca:\n" + info +
-                "Use esse contexto pra guiar a conversa desde a primeira "
-                "resposta — não pergunte qual artigo é, você já sabe."
             )
 
         # Nível de ensino ajusta a explicação para qualquer perfil.
@@ -277,9 +259,7 @@ class AppController:
         """Carrega uma conversa salva: repassa o histórico para o engine (para
         que a continuação tenha contexto) e retorna as mensagens para a UI."""
         self.current_quiz = db.get_quiz_context(conversation_id)
-        self.current_article = None
-        self.set_mode("quiz" if self.current_quiz is not None else
-                      ("aluno" if self.current_mode in ("quiz", "library") else self.current_mode))
+        self.set_mode("quiz" if self.current_quiz is not None else "aluno")
         messages = db.get_conversation_messages(conversation_id)
         self._engine.load_history(messages)
         self.current_conversation_id = conversation_id
@@ -292,12 +272,6 @@ class AppController:
             self.set_mode("aluno")
         self._engine.clear_history()
         self.current_conversation_id = None
-        # "Novo Chat" comum sai do modo library (que só faz sentido atrelado
-        # a um artigo específico) — evita continuar sem querer nesse modo
-        # numa conversa qualquer, sem contexto de artigo nenhum.
-        if self.current_mode == "library":
-            self.current_article = None
-            self.set_mode("aluno")
 
     def start_quiz_chat(self, question: dict, selected: str) -> int:
         context = make_context(question, selected)
@@ -309,24 +283,11 @@ class AppController:
             context, intro,
         )
         self._engine.clear_history()
-        self.current_article = None
         self.current_quiz = context
         self.current_conversation_id = conversation_id
         self.set_mode("quiz")
         self._engine.load_history([{"role": "assistant", "content": intro}])
         return conversation_id
-
-    def start_library_chat(self, article: dict):
-        """Inicia uma conversa nova já no modo Biblioteca, com o contexto
-        do artigo (título, autores, resumo) injetado na personalização —
-        a IA já "sabe" do artigo desde a primeira resposta, sem precisar
-        de RAG: o resumo cabe tranquilo no espaço de contexto normal."""
-        self._auto_export()
-        self._engine.clear_history()
-        self.current_conversation_id = None
-        self.current_quiz = None
-        self.current_article = article
-        self.set_mode("library")
 
     def close(self):
         self._auto_export()

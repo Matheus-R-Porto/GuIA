@@ -1,7 +1,7 @@
 import time
 import sys
 
-from prompt import SYSTEM_PROMPT, PROMPT_LIBRARY, PROMPT_QUIZ
+from prompt import SYSTEM_PROMPT, PROMPT_QUIZ
 from safety import check_safety_verbose
 from latex_sanitizer import strip_latex
 from config import MAX_HISTORY_MESSAGES, HARD_MAX_INPUT_CHARS, STUDY_MODE
@@ -157,8 +157,6 @@ class TutorEngine:
     def _call_with_retry(self, messages: list[dict]) -> str:
         if self._mode == "quiz":
             base_prompt = PROMPT_QUIZ
-        elif self._mode == "library":
-            base_prompt = PROMPT_LIBRARY
         else:
             base_prompt = SYSTEM_PROMPT
         # Revisões podem precisar de uma explicação mais longa.
