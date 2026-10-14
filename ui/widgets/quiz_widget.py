@@ -777,17 +777,22 @@ class QuizWidget(QWidget):
             QTimer.singleShot(0, self._ajustar_altura_alternativas_texto)
 
     def _ajustar_altura_alternativas_texto(self):
-        for btn in self._alt_buttons.values():
-            layout = btn.layout()
-            if layout is None or layout.count() == 0:
-                continue
-            label = layout.itemAt(0).widget()
-            if not isinstance(label, QLabel) or label.width() <= 0:
-                continue
-            margens = layout.contentsMargins()
-            altura_texto = label.heightForWidth(label.width())
-            altura_total = altura_texto + margens.top() + margens.bottom()
-            btn.setMinimumHeight(max(42, altura_total))
+        # Chamado por QTimer.singleShot: ao disparar, o widget (ou os botões)
+        # pode já ter sido destruído (troca de questão, tela fechada).
+        try:
+            for btn in self._alt_buttons.values():
+                layout = btn.layout()
+                if layout is None or layout.count() == 0:
+                    continue
+                label = layout.itemAt(0).widget()
+                if not isinstance(label, QLabel) or label.width() <= 0:
+                    continue
+                margens = layout.contentsMargins()
+                altura_texto = label.heightForWidth(label.width())
+                altura_total = altura_texto + margens.top() + margens.bottom()
+                btn.setMinimumHeight(max(42, altura_total))
+        except RuntimeError:
+            return
 
     def _build_alt_text_button(self, letra: str, texto: str) -> QPushButton:
         # QPushButton não quebra linha no próprio texto — alternativas

@@ -28,6 +28,17 @@ def create_user(name: str, password: str) -> dict:
         return {"id": user.id, "name": user.name, "role": "aluno"}
 
 
+def create_default_user(name: str = "Aluno") -> dict:
+    """Perfil local único, sem senha — usado quando o login está desabilitado
+    (config.ENABLE_LOGIN = False)."""
+    with get_session() as session:
+        user = User(name=name, role="aluno", password_hash="", institution_id=None)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return {"id": user.id, "name": user.name, "role": "aluno"}
+
+
 def list_users() -> list[dict]:
     """Lista os perfis locais para o seletor de login."""
     with get_session() as session:
@@ -133,6 +144,40 @@ def get_conversation_messages(conversation_id: int) -> list[dict]:
             .all()
         )
         return [{"role": m.role, "content": m.content} for m in rows]
+
+
+def get_context_messages(conversation_id: int) -> list[dict]:
+    """Mensagens que podem voltar ao contexto da IA ao reabrir uma conversa.
+
+    Pedidos bloqueados pelo filtro de segurança (e a resposta de bloqueio que
+    veio logo depois) continuam visíveis para o usuário em
+    get_conversation_messages(), mas não são reenviados ao modelo — o engine
+    nunca os incluiu no histórico da sessão original."""
+    with get_session() as session:
+        rows = (
+            session.query(Message)
+            .filter(Message.conversation_id == conversation_id)
+            .order_by(Message.order_index)
+            .all()
+        )
+        blocked_ids = {
+            b.message_id
+            for b in session.query(SafetyBlock)
+            .filter(SafetyBlock.message_id.in_([m.id for m in rows]))
+            .all()
+        }
+        context = []
+        skip_next_assistant = False
+        for m in rows:
+            if m.id in blocked_ids:
+                skip_next_assistant = True
+                continue
+            if skip_next_assistant and m.role == "assistant":
+                skip_next_assistant = False
+                continue
+            skip_next_assistant = False
+            context.append({"role": m.role, "content": m.content})
+        return context
 
 
 def rename_conversation(conversation_id: int, title: str):

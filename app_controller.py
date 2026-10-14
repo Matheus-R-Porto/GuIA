@@ -50,6 +50,15 @@ class AppController:
     def create_profile(self, name: str, password: str) -> dict:
         return db.create_user(name, password)
 
+    def default_profile_id(self) -> int:
+        """Perfil usado quando o login está desabilitado: o primeiro já
+        existente (preserva o histórico de quem usava o app antes) ou um
+        perfil novo, sem senha."""
+        profiles = db.list_users()
+        if profiles:
+            return profiles[0]["id"]
+        return db.create_default_user()["id"]
+
     def check_password(self, user_id: int, password: str) -> bool:
         return db.check_user_password(user_id, password)
 
@@ -128,14 +137,11 @@ class AppController:
         if self.current_quiz is not None:
             parts.append(context_prompt(self.current_quiz))
 
-        name = user_config.get("user_name", "").strip()
-        if name:
-            parts.append(
-                f"O nome do aluno é {name}. Use o nome dele de forma natural ao longo da "
-                f"conversa — sempre na saudação inicial e ao validar, elogiar ou encorajar "
-                f"(ex.: \"Boa, {name}!\"). Não precisa usar em toda frase, mas faça com que "
-                f"fique claro que você sabe o nome dele. Nunca invente outro nome."
-            )
+        # O tutor nunca usa nome próprio: trata o usuário sempre como "aluno".
+        parts.append(
+            "Refira-se ao usuário sempre como \"aluno\" (ex.: \"Boa, aluno!\"). "
+            "Nunca use nem invente nome próprio para ele, mesmo que apareça na conversa."
+        )
 
         # Nível de ensino ajusta a explicação para qualquer perfil.
         level_names = {"fundamental": "fundamental", "medio": "médio", "superior": "superior"}
@@ -261,7 +267,8 @@ class AppController:
         self.current_quiz = db.get_quiz_context(conversation_id)
         self.set_mode("quiz" if self.current_quiz is not None else "aluno")
         messages = db.get_conversation_messages(conversation_id)
-        self._engine.load_history(messages)
+        # A UI mostra tudo; o modelo só recebe o que não foi bloqueado.
+        self._engine.load_history(db.get_context_messages(conversation_id))
         self.current_conversation_id = conversation_id
         return messages
 

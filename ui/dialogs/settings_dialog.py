@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 
 import user_config
+from config import ENABLE_LOGIN
 from i18n import t
 
 
@@ -62,6 +63,9 @@ class SettingsDialog(QDialog):
         self.name_edit.setText(user_config.get("user_name", ""))
         self.name_edit.setMaxLength(40)
         self.name_edit.setMinimumHeight(34)
+        # O tutor sempre trata o usuário como "aluno"; o campo de nome fica oculto.
+        name_label.hide()
+        self.name_edit.hide()
         left.addWidget(name_label)
         left.addWidget(self.name_edit)
 
@@ -208,12 +212,13 @@ class SettingsDialog(QDialog):
         right.addStretch(1)
 
         # --- Trocar perfil (linha própria, largura toda) ---
-        switch_profile_btn = QPushButton(t("switch_profile_btn"))
-        switch_profile_btn.setObjectName("DialogSecondaryButton")
-        switch_profile_btn.setCursor(Qt.PointingHandCursor)
-        switch_profile_btn.setMinimumHeight(34)
-        switch_profile_btn.clicked.connect(self._on_switch_profile_clicked)
-        outer.addWidget(switch_profile_btn)
+        if ENABLE_LOGIN:
+            switch_profile_btn = QPushButton(t("switch_profile_btn"))
+            switch_profile_btn.setObjectName("DialogSecondaryButton")
+            switch_profile_btn.setCursor(Qt.PointingHandCursor)
+            switch_profile_btn.setMinimumHeight(34)
+            switch_profile_btn.clicked.connect(self._on_switch_profile_clicked)
+            outer.addWidget(switch_profile_btn)
 
         # --- Botões ---
         btn_row = QHBoxLayout()

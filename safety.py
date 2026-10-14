@@ -122,7 +122,9 @@ _OTHER_PATTERNS = (r"\bignore\b(?:\s+\w+){0,3}\s+(regras|instrucoes|diretrizes|a
     # Pedido explícito de resposta
     r"\bme\s+(manda|passa|da|diga|fala|mostra|entrega|envia)\s+(so\s+)?a\s+resposta\b",
     r"\bso\s+a\s+resposta\b",
-    r"\bresposta\s+pronta\b",
+    # Negação ("não quero resposta pronta, só uma dica") é pedido legítimo de
+    # ajuda guiada — os lookbehinds de largura fixa excluem esses casos.
+    r"(?<!nao\s)(?<!nao\squero\s)(?<!nao\squero\suma\s)(?<!nao\squero\sa\s)(?<!nao\spreciso\sde\s)(?<!sem\s)(?<!sem\suma\s)\bresposta\s+pronta\b",
     r"\bpronto\s+para\s+copiar\b",
     # Gabarito: só má-fé explícita (pedir/exigir), não menção legítima
     r"\b(me\s+)?(da|passa|manda|diga|envia|entrega|mostra)\s+(o\s+|os\s+)?gabaritos?\b",
@@ -195,5 +197,5 @@ def check_safety(text: str, mode: str = "aluno") -> str | None:
 def check_safety_verbose(text: str, mode: str = "aluno") -> tuple[str | None, str | None]:
     """Igual a check_safety, mas também devolve o padrão de regex que disparou
     o bloqueio (ou None se não bloqueou) — usado para registrar o motivo em
-    SafetyBlock, dado bruto para a pesquisa do TCC."""
+    SafetyBlock, dado bruto para a pesquisa do projeto."""
     return _find_block(text, mode)

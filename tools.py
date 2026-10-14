@@ -15,10 +15,33 @@ import re
 # CALCULADORA
 # ---------------------------------------------------------------------------
 
+# Limites de custo: a calculadora roda no processo do app, então uma expressão
+# como 2**10**10 não pode ser calculada (consumiria gigabytes de memória).
+_MAX_EXPR_CHARS = 200
+_MAX_AST_NODES = 60
+_MAX_POW_DIGITS = 300
+_MAX_FACTORIAL = 500
+
+
+def _safe_pow(base, exp):
+    if isinstance(base, (int, float)) and isinstance(exp, (int, float)):
+        if abs(exp) > 10000:
+            raise ValueError("expoente grande demais")
+        if abs(base) > 1 and abs(exp) * math.log10(abs(base)) > _MAX_POW_DIGITS:
+            raise ValueError("resultado grande demais")
+    return operator.pow(base, exp)
+
+
+def _safe_factorial(n):
+    if isinstance(n, (int, float)) and n > _MAX_FACTORIAL:
+        raise ValueError("fatorial grande demais")
+    return math.factorial(n)
+
+
 _BIN_OPS = {
     ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
     ast.Div: operator.truediv, ast.FloorDiv: operator.floordiv,
-    ast.Mod: operator.mod, ast.Pow: operator.pow,
+    ast.Mod: operator.mod, ast.Pow: _safe_pow,
 }
 _UNARY_OPS = {ast.UAdd: operator.pos, ast.USub: operator.neg}
 
@@ -31,10 +54,10 @@ _ALLOWED_FUNCS = {
     "sinh": math.sinh, "cosh": math.cosh, "tanh": math.tanh,
     "log": math.log, "log10": math.log10, "log2": math.log2, "ln": math.log,
     "exp": math.exp, "abs": abs, "fabs": math.fabs,
-    "factorial": math.factorial, "gcd": math.gcd,
+    "factorial": _safe_factorial, "gcd": math.gcd,
     "floor": math.floor, "ceil": math.ceil, "round": round,
     "degrees": math.degrees, "radians": math.radians,
-    "hypot": math.hypot, "pow": math.pow, "min": min, "max": max,
+    "hypot": math.hypot, "pow": lambda a, b: _safe_pow(a, b), "min": min, "max": max,
 }
 
 
@@ -69,17 +92,43 @@ def _eval_node(node):
     raise ValueError("expressão não permitida")
 
 
+# Funções com mais de um argumento: dentro delas, "8,2" é separador ("log(8,2)"
+# = logaritmo de 8 na base 2). Fora delas, ou em funções de um argumento,
+# "0,5" é decimal PT-BR.
+_MULTI_ARG_FUNCS = {"log", "atan2", "pow", "hypot", "gcd", "min", "max", "round"}
+
+
+def _normalize_commas(expr: str) -> str:
+    out = []
+    stack = []  # nome da função de cada parêntese aberto ("" = agrupamento)
+    for i, ch in enumerate(expr):
+        if ch == "(":
+            m = re.search(r"([A-Za-z_][A-Za-z0-9_]*)$", expr[:i])
+            stack.append(m.group(1) if m else "")
+        elif ch == ")":
+            if stack:
+                stack.pop()
+        elif (ch == "," and 0 < i < len(expr) - 1
+              and expr[i - 1].isdigit() and expr[i + 1].isdigit()
+              and not (stack and stack[-1] in _MULTI_ARG_FUNCS)):
+            ch = "."
+        out.append(ch)
+    return "".join(out)
+
+
 def calculate(expression: str) -> str:
     """Avalia uma expressão matemática com segurança. Retorna o resultado como texto."""
     expr = expression.strip().replace("^", "**")
     if not expr:
         return "Erro: expressão vazia"
-    # Vírgula decimal PT-BR → ponto. Só converte vírgula entre dígitos SEM espaço
-    # (ex.: "0,093" → "0.093"); argumentos de função usam vírgula com espaço
-    # ("log(8, 2)"), que ficam intactos.
-    expr = re.sub(r"(?<=\d),(?=\d)", ".", expr)
+    if len(expr) > _MAX_EXPR_CHARS:
+        return "Erro: expressão longa demais"
+    # Vírgula decimal PT-BR → ponto, exceto como separador de argumentos.
+    expr = _normalize_commas(expr)
     try:
         tree = ast.parse(expr, mode="eval")
+        if sum(1 for _ in ast.walk(tree)) > _MAX_AST_NODES:
+            return "Erro: expressão complexa demais"
         result = _eval_node(tree)
     except ZeroDivisionError:
         return "Erro: divisão por zero"
@@ -89,7 +138,10 @@ def calculate(expression: str) -> str:
         if result.is_integer():
             return str(int(result))
         result = round(result, 10)
-    return str(result)
+    try:
+        return str(result)
+    except ValueError:
+        return "Erro: resultado grande demais"
 
 
 CALCULATOR_TOOL = {

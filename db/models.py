@@ -85,7 +85,7 @@ class Message(Base):
 
 
 class SafetyBlock(Base):
-    """Registro de bloqueio do safety.py — dado bruto para a pesquisa do TCC
+    """Registro de bloqueio do safety.py — dado bruto para a pesquisa do projeto
     (quantas tentativas de má-fé ocorreram, com qual padrão)."""
     __tablename__ = "safety_blocks"
 

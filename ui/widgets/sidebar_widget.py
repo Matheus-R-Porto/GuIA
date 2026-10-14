@@ -106,6 +106,10 @@ class SidebarWidget(QFrame):
         self.conversation_list.setFrameShape(QListWidget.NoFrame)
         self.conversation_list.setFont(QFont("Open Sans", 11))
         self.conversation_list.setSpacing(1)
+        # Títulos longos são cortados com "…"; nunca aparece barra horizontal.
+        self.conversation_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.conversation_list.setTextElideMode(Qt.ElideRight)
+        self.conversation_list.setWordWrap(False)
         self.conversation_list.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.conversation_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.conversation_list.customContextMenuRequested.connect(self._show_context_menu)

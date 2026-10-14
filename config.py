@@ -12,7 +12,7 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = "openai/gpt-oss-120b"
 
-# --- Semantic Scholar (Laboratório) ---
+# --- Semantic Scholar (botão "Pedir fontes") ---
 # Chave gratuita (Allen Institute for AI) tira o app do pool sem-chave
 # compartilhado (congestionado, causa 429 fácil) e passa pro pool dedicado
 # (1 req/s). Funciona sem chave também, só com limite mais apertado.
@@ -29,9 +29,12 @@ MAX_USER_CHARS = 2000
 HARD_MAX_INPUT_CHARS = 2400
 
 # --- UI ---
+# ENABLE_LOGIN = seleção de perfil com senha na inicialização. Desabilitado:
+# o app abre direto, num perfil local único (o código do login é mantido).
+ENABLE_LOGIN = False
 ENABLE_ATTACHMENTS = False
 ENABLE_EXPLORE = False
-# ENABLE_QUIZ = banco de questões de vestibular — tela "Laboratório"
+# ENABLE_QUIZ = banco de questões de vestibular — tela "Simulado"
 ENABLE_QUIZ = True
 
 # --- Modo coleta de dados (estudo comparativo) ---

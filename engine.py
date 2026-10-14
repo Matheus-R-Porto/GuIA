@@ -43,7 +43,7 @@ class TutorEngine:
         self._mode = "aluno"
         # Padrão de regex que disparou o bloqueio no último ask() (None se não
         # bloqueou) — lido pelo app_controller logo após ask() para registrar
-        # em SafetyBlock, dado bruto para a pesquisa do TCC.
+        # em SafetyBlock, dado bruto para a pesquisa do projeto.
         self.last_block_pattern: str | None = None
 
     def set_providers(self, providers: list):
@@ -130,7 +130,7 @@ class TutorEngine:
                 query = provider.chat(
                     [{"role": "user", "content":
                       f"Pergunta: {question[:2400]}\nResposta: {answer[:10000]}"}],
-                    prompt, max_tokens=100,
+                    prompt, max_tokens=400,
                 ).strip().strip('"')
                 if query:
                     return query

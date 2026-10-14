@@ -5,6 +5,7 @@ from ui.dialogs import LoginDialog
 from ui.windows import GuiAWindow
 import theme
 import user_config
+from config import ENABLE_LOGIN
 
 
 def main():
@@ -25,7 +26,9 @@ def main():
         sys.exit(1)
 
     profiles = controller.list_profiles()
-    if len(profiles) == 1 and not profiles[0]["has_password"]:
+    if not ENABLE_LOGIN:
+        controller.set_active_user(controller.default_profile_id())
+    elif len(profiles) == 1 and not profiles[0]["has_password"]:
         # Único perfil e sem senha: entra direto, sem fricção (comportamento
         # de antes do Login existir).
         controller.set_active_user(profiles[0]["id"])
