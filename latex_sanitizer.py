@@ -33,6 +33,10 @@ _SYMBOL_MAP = [
     (r"\\times", "×"), (r"\\div", "÷"), (r"\\cdot", "·"),
     (r"\\leq", "≤"), (r"\\geq", "≥"), (r"\\neq", "≠"), (r"\\approx", "≈"),
     (r"\\infty", "∞"),
+    (r"\\Longrightarrow", "⇒"), (r"\\longrightarrow", "→"), (r"\\Rightarrow", "⇒"),
+    (r"\\implies", "⇒"), (r"\\iff", "⇔"),
+    (r"\\ldots", "…"), (r"\\dots", "…"), (r"\\cdots", "⋯"),
+    (r"\\le\b", "≤"), (r"\\ge\b", "≥"), (r"\\ne\b", "≠"),
     (r"\\rightarrow", "→"), (r"\\to", "→"), (r"\\in\b", "∈"),
     (r"\\int", "∫"), (r"\\sum", "Σ"), (r"\\prod", "Π"),
     (r"\\Delta", "Δ"), (r"\\delta", "δ"),
@@ -47,8 +51,14 @@ _SYMBOL_MAP = [
 ]
 
 
+_SIMPLE = re.compile(r"(?:\\[A-Za-z]+|[A-Za-z0-9π√²³.,])+")
+
+
 def _frac_sub(match: re.Match) -> str:
-    return f"({match.group(1)})/({match.group(2)})"
+    a, b = match.group(1).strip(), match.group(2).strip()
+    if _SIMPLE.fullmatch(a) and _SIMPLE.fullmatch(b):
+        return f"{a}/{b}"  # frações simples: 1/3, π/3
+    return f"({a})/({b})"
 
 
 def _sqrt_braces_sub(match: re.Match) -> str:
@@ -61,6 +71,8 @@ def _pow_sub(match: re.Match) -> str:
     content = match.group(1)
     if re.fullmatch(r"[+-]?\d+", content):
         return "".join(_SUP_DIGITS.get(c, c) for c in content)
+    if re.fullmatch(r"[A-Za-z0-9]{1,3}", content):
+        return f"^{content}"
     return f"^({content})"
 
 
@@ -68,7 +80,27 @@ def _sub_sub(match: re.Match) -> str:
     content = match.group(1)
     if re.fullmatch(r"[+-]?\d+", content):
         return "".join(_SUB_DIGITS.get(c, c) for c in content)
+    if re.fullmatch(r"[0-9]+(,[0-9]+)+", content):
+        return "".join(_SUB_DIGITS.get(c, c) for c in content)  # x₁,₂
+    if re.fullmatch(r"[A-Za-z0-9]{1,8}", content):
+        return f"_{content}"
     return f"_({content})"
+
+
+_MATRIX_ENV = re.compile(r"\\begin\{([pbvBV]?matrix)\}(.*?)\\end\{\1\}", re.DOTALL)
+
+
+def _matrix_block(match: re.Match) -> str:
+    """\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix} -> bloco de código alinhado."""
+    rows = [r.strip() for r in re.split(r"\\\\", match.group(2)) if r.strip()]
+    cells = [[strip_latex(c.strip()) for c in row.split("&")] for row in rows]
+    if not cells:
+        return ""
+    ncols = max(len(r) for r in cells)
+    widths = [max(len(r[j]) if j < len(r) else 0 for r in cells) for j in range(ncols)]
+    lines = ["[ " + "  ".join((r[j] if j < len(r) else "").rjust(widths[j]) for j in range(ncols)) + " ]"
+             for r in cells]
+    return "\n```\n" + "\n".join(lines) + "\n```\n"
 
 
 def strip_latex(text: str) -> str:
@@ -78,8 +110,21 @@ def strip_latex(text: str) -> str:
     if not text or "\\" not in text:
         return text
 
+    # Matrizes viram bloco de código alinhado (o chat não renderiza LaTeX).
+    blocks: list[str] = []
+
+    def _stash(m: re.Match) -> str:
+        blocks.append(_matrix_block(m))
+        return f"\x00M{len(blocks) - 1}\x00"
+
+    result = _MATRIX_ENV.sub(_stash, text)
+    # \text{cm}, \mathrm{x}, \mathbf{A}, \operatorname{tr}: mantém só o conteúdo.
+    for _ in range(3):
+        result = re.sub(r"\\(?:text|textbf|textit|mathrm|mathbf|mathit|operatorname|mbox)\{([^{}]*)\}",
+                        r"\1", result)
+
     # \begin{cases}/\end{cases}: mantém o conteúdo, descarta o envelope.
-    result = re.sub(r"\\begin\{[a-z*]+\}", "", text)
+    result = re.sub(r"\\begin\{[a-z*]+\}", "", result)
     result = re.sub(r"\\end\{[a-z*]+\}", "", result)
 
     # \sqrt{...} e ^{...}/_{...} são resolvidos ANTES de \frac, porque
@@ -130,4 +175,6 @@ def strip_latex(text: str) -> str:
     # Colapsa espaços/linhas em branco extras deixados pelas remoções acima.
     result = re.sub(r"[ \t]{2,}", " ", result)
     result = re.sub(r"\n{3,}", "\n\n", result)
+    for i, block in enumerate(blocks):
+        result = result.replace(f"\x00M{i}\x00", block)
     return result.strip()

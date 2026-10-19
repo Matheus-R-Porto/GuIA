@@ -34,6 +34,18 @@ A busca roda em segundo plano, apresenta falhas e ausência de resultados sem in
 
 Arquivos centrais: sources.py, engine.py (source_query), app_controller.py (request_sources), ui/widgets/chat_input_widget.py e ui/windows/guia_window.py. Testes: tests/test_sources.py.
 
+## Atualização — revisão das conversas do teste na escola (2026-10-19)
+
+Revisão das conversas reais de 16/10 (questões de matrizes e do cone com esfera). Problemas encontrados e o que foi feito (testes em `tests/test_feedback_fixes.py`):
+
+- **Notação quebrada** (`V_{\text{cone}}`, `\Longrightarrow`, `\ldots`, `(1)/(3)`, matrizes com `&`): `latex_sanitizer.py` agora trata `\text{}`/`\mathrm{}`, subscritos e sobrescritos curtos (`r_b`, `x₁,₂`), setas e reticências, frações simples (`1/3`) e converte `pmatrix`/`bmatrix` em bloco de código alinhado.
+- **Trava de segurança sem saída:** a mensagem fixa ("Não consigo fazer isso...") foi trocada por uma construtiva e, se o mesmo bloqueio se repete em seguida, o `engine` usa uma segunda mensagem (`_BLOCKED_RESPONSE_REPEAT`).
+- **Nome:** o tutor trata sempre como "aluno" e, se pedirem outro nome, responde uma vez sem citar regras.
+- **Prompt (seção "Respostas e erros do aluno" + 2 exemplos + linhas no compacto):** não atribuir ao aluno resultados que ele não escreveu, não escrever a fórmula/resultado final, conferir valores antes de validar, uma pergunta por mensagem, reduzir o passo após dois erros. Efeito parcial: o modelo ainda erra em alguns casos (observado nos testes ao vivo).
+- **"Pedir fontes":** a consulta descarta números/variáveis e resultados cujo título não tem relação com os termos buscados (`sources_irrelevant`).
+
+Limitação conhecida: o tutor pode errar em matemática avançada e ainda entregar passos além do desejado; funciona melhor em conteúdos de exatas básicos.
+
 ## Atualização — revisão do código contra o relatório (2026-10-13)
 
 Conferência do código completo contra o relatório final do projeto. O relatório descrevia quatro correções que **não estavam no código**; todas foram implementadas e cobertas por testes (`tests/test_review_fixes.py`): (1) calculadora: `log(8,2)` retornava 2,104 porque a vírgula virava decimal — agora vírgula entre dígitos é separador dentro de funções de mais de um argumento (`log`, `pow`, `max`...) e decimal fora delas; (2) limites de custo na calculadora (expressão até 200 caracteres/60 nós, potência e fatorial limitados — `2**10**10` não é mais calculado); (3) mensagens bloqueadas pelo filtro continuam visíveis na conversa, mas deixam de voltar ao contexto da IA ao reabri-la (`db.get_context_messages`); (4) "Não quero resposta pronta, só uma dica" deixou de ser bloqueado (negação antes de "resposta pronta").

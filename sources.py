@@ -1,5 +1,6 @@
 """Real bibliographic search for a chat answer; results are not proof of a claim."""
 import re
+import unicodedata
 from urllib.parse import urlsplit, quote
 
 from library.references import search_references as search_articles
@@ -21,6 +22,28 @@ def _plain(text):
     return re.sub(r'([\\`*_{}\[\]()<>#!|])', r'\\\1', ' '.join(str(text or '').split()))
 
 
+_STOPWORDS = {'the', 'and', 'for', 'with', 'from', 'that', 'this', 'using', 'use', 'study',
+              'analysis', 'based', 'into', 'about', 'their', 'between', 'form', 'standard'}
+
+
+def _fold(text):
+    return unicodedata.normalize('NFD', str(text).lower()).encode('ascii', 'ignore').decode()
+
+
+def _keywords(query):
+    words = [_fold(w) for w in re.findall(r"[\w]+", query)]
+    return [w for w in words if len(w) > 2 and not w.isdigit() and w not in _STOPWORDS]
+
+
+def _is_relevant(title, keywords):
+    """Pelo menos metade dos termos da busca (mínimo 2) aparece no título."""
+    if len(keywords) < 2:
+        return True
+    folded = _fold(title)
+    hits = sum(1 for k in keywords if k[:6] in folded)   # raiz curta: plural/flexão
+    return hits >= max(2, -(-len(keywords) // 2))
+
+
 def find_sources(question, answer, query_builder):
     try:
         query = query_builder(question, answer).strip()
@@ -29,7 +52,10 @@ def find_sources(question, answer, query_builder):
     if not query or query.upper() == 'NONE':
         return t('sources_no_claim')
     # Bound and sanitize model-generated search terms, not bibliographic data.
-    query = ' '.join(re.findall(r"[\w-]+", query)[:16])[:200]
+    # Números e termos de 1-2 letras (restos de fórmulas como "ax 2 bx c 0") só poluem a busca.
+    terms = [w for w in re.findall(r"[\w-]+", query)
+             if len(w) > 2 and not w.isdigit()] or re.findall(r"[\w-]+", query)
+    query = ' '.join(terms[:12])[:200]
     if not query:
         return t('sources_no_claim')
     try:
@@ -56,6 +82,12 @@ def find_sources(question, answer, query_builder):
             seen.add(url)
     if not articles:
         return t('sources_not_found')
+    # Descarta resultados cujo título não tem relação com os termos buscados.
+    keywords = _keywords(query)
+    relevant = [a for a in articles if _is_relevant(a.get('title', ''), keywords)]
+    if not relevant:
+        return t('sources_irrelevant')
+    articles = relevant
     lines = [t('sources_heading'), t('sources_caveat'),
              t('sources_query', query=_plain(query))]
     if result.get('provider'):

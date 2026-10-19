@@ -1,8 +1,18 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(encoding="utf-8-sig", override=True)  # override=True: .env sempre tem prioridade sobre env do sistema
+# No executável (PyInstaller) o .env fica ao lado do GuIA.exe; no desenvolvimento,
+# na raiz do projeto. Cai no comportamento padrão se não existir.
+_APP_DIR = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+_ENV_FILE = _APP_DIR / ".env"
+if not _ENV_FILE.exists() and getattr(sys, "frozen", False):
+    _ENV_FILE = Path(getattr(sys, "_MEIPASS", _APP_DIR)) / ".env"  # cópia embutida no pacote
+if _ENV_FILE.exists():
+    load_dotenv(_ENV_FILE, encoding="utf-8-sig", override=True)
+else:
+    load_dotenv(encoding="utf-8-sig", override=True)  # override=True: .env sempre tem prioridade sobre env do sistema
 
 # --- OpenAI ---
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

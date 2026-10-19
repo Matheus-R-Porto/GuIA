@@ -148,9 +148,16 @@ _OTHER_PATTERNS = (r"\bignore\b(?:\s+\w+){0,3}\s+(regras|instrucoes|diretrizes|a
     r"\bhumanizar\b.*\bdetector\b",)       # jailbreak, cola, automação
 
 _BLOCKED_RESPONSE = (
-    "Não consigo fazer isso. "
-    "Estou aqui para te ajudar a aprender, não para substituir seu esforço. "
-    "Se tiver uma dúvida específica, pode me perguntar."
+    "Não entrego a resposta pronta, mas posso te guiar até ela, passo a passo. "
+    "Me conta qual é a questão e o que você já tentou, ou onde travou."
+)
+
+# Usada quando o pedido bloqueado se repete em seguida: não repete a mesma frase
+# e oferece um ponto de partida concreto.
+_BLOCKED_RESPONSE_REPEAT = (
+    "Entendo que você queira ir direto ao resultado, mas o caminho é que fixa o conteúdo. "
+    "Vamos pelo primeiro passo: copie aqui o enunciado e me diga o que ele pede. "
+    "Se não souber por onde começar, eu dou o ponto de partida."
 )
 
 _BLOCKED_RESPONSE_18 = (

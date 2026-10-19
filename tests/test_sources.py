@@ -40,7 +40,7 @@ def test_search_failures_are_not_confirmation(monkeypatch):
 
 def test_metadata_cannot_inject_a_link(monkeypatch):
     monkeypatch.setattr(sources, 'search_articles', lambda *a, **kw: {'articles': [
-        dict(title='[Fake](https://invented.invalid)', authors='<b>Author</b>', year=2020,
+        dict(title='[Fake](https://invented.invalid) sleep memory', authors='<b>Author</b>', year=2020,
              url='https://example.org/paper')
     ]})
     response = sources.find_sources('q', 'a', lambda *a: 'sleep memory')

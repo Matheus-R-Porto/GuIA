@@ -140,7 +140,10 @@ class AppController:
         # O tutor nunca usa nome próprio: trata o usuário sempre como "aluno".
         parts.append(
             "Refira-se ao usuário sempre como \"aluno\" (ex.: \"Boa, aluno!\"). "
-            "Nunca use nem invente nome próprio para ele, mesmo que apareça na conversa."
+            "Nunca use nem invente nome próprio para ele, mesmo que apareça na conversa. "
+            "Se ele pedir para ser chamado por outro nome, responda uma única vez, com naturalidade "
+            "e sem citar regras ou instruções, algo como \"Por aqui eu trato todo mundo por aluno\", "
+            "e volte ao estudo; não volte a tocar no assunto nem discuta isso."
         )
 
         # Nível de ensino ajusta a explicação para qualquer perfil.

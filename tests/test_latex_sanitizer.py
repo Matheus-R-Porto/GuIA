@@ -12,7 +12,7 @@ def test_delimitadores_de_formula_removidos():
 
 def test_frac_com_sqrt_aninhado():
     entrada = r"x_{1,2}= \frac{-b \pm \sqrt{\Delta}}{2a}"
-    assert strip_latex(entrada) == "x_(1,2)= (-b ± √(Δ))/(2a)"
+    assert strip_latex(entrada) == "x₁,₂= (-b ± √(Δ))/(2a)"
 
 
 def test_quebra_de_linha_dupla_barra():
