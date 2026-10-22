@@ -34,6 +34,15 @@ A busca roda em segundo plano, apresenta falhas e ausência de resultados sem in
 
 Arquivos centrais: sources.py, engine.py (source_query), app_controller.py (request_sources), ui/widgets/chat_input_widget.py e ui/windows/guia_window.py. Testes: tests/test_sources.py.
 
+## Atualização — revisão das conversas da feira (2026-10-21)
+
+Conversas reais de 21/10 (hidrostática, equação do 3º grau, volume de paralelepípedo, multiplicação). Achados e correções (testes em `tests/test_loop_fixes.py`):
+
+- **Laço de perguntas:** quando o visitante insistia ("calcula pra mim", "quero a resposta", "você sabe fazer?"), o tutor repetia a mesma pergunta 4 vezes. Agora o `engine` (a) detecta a insistência e avisa o modelo para reconhecer o pedido e reduzir o passo; (b) detecta pergunta final repetida (similaridade de texto e de palavras) e faz uma segunda tentativa com o aviso; (c) o prompt ganhou regra e exemplo para isso.
+- **Vírgula decimal do LaTeX** (`9{,}81`) agora é convertida mesmo sem comandos com barra.
+- **Terminologia:** prompt pede termos do Brasil ("pressão manométrica", não "gauge").
+- Limitação que permanece: contas triviais com insistência repetida ainda geram perguntas parecidas em alguns casos.
+
 ## Atualização — revisão das conversas do teste na escola (2026-10-19)
 
 Revisão das conversas reais de 16/10 (questões de matrizes e do cone com esfera). Problemas encontrados e o que foi feito (testes em `tests/test_feedback_fixes.py`):
@@ -42,7 +51,7 @@ Revisão das conversas reais de 16/10 (questões de matrizes e do cone com esfer
 - **Trava de segurança sem saída:** a mensagem fixa ("Não consigo fazer isso...") foi trocada por uma construtiva e, se o mesmo bloqueio se repete em seguida, o `engine` usa uma segunda mensagem (`_BLOCKED_RESPONSE_REPEAT`).
 - **Nome:** o tutor trata sempre como "aluno" e, se pedirem outro nome, responde uma vez sem citar regras.
 - **Prompt (seção "Respostas e erros do aluno" + 2 exemplos + linhas no compacto):** não atribuir ao aluno resultados que ele não escreveu, não escrever a fórmula/resultado final, conferir valores antes de validar, uma pergunta por mensagem, reduzir o passo após dois erros. Efeito parcial: o modelo ainda erra em alguns casos (observado nos testes ao vivo).
-- **"Pedir fontes":** a consulta descarta números/variáveis e resultados cujo título não tem relação com os termos buscados (`sources_irrelevant`).
+- **"Pedir fontes":** a consulta descarta números/variáveis e resultados cujo título não tem relação com os termos buscados (`sources_irrelevant`). Para conteúdo escolar, a resposta agora traz primeiro páginas da **Wikipédia em português** (`search_wikipedia`, API REST sem chave, com User-Agent identificado) e depois os artigos acadêmicos (rotulados como "podem ser avançados"); o modelo devolve duas consultas separadas por `|` (título em português | termos em inglês).
 
 Limitação conhecida: o tutor pode errar em matemática avançada e ainda entregar passos além do desejado; funciona melhor em conteúdos de exatas básicos.
 

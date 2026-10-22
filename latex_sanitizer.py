@@ -107,6 +107,9 @@ def strip_latex(text: str) -> str:
     """Converte notação LaTeX comum em texto puro/Unicode. Se o texto não
     contém nenhum comando LaTeX (sem barra invertida), retorna sem alterações
     — não mexe em respostas normais."""
+    if text:
+        # "9{,}81" é a vírgula decimal do LaTeX; aparece mesmo sem nenhum comando com barra.
+        text = text.replace("{,}", ",")
     if not text or "\\" not in text:
         return text
 
